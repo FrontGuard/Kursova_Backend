@@ -7,7 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = $_POST['password'];
 
     // Підготовка запиту для вибірки користувача з бази даних
-    $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE username = ?");
+    $stmt = $conn->prepare("SELECT id, username, password, role, blocked_until FROM users WHERE username = ?");
     if ($stmt === false) {
         // Логування помилки підготовки запиту
         error_log("Помилка підготовки запиту: " . $conn->error);
@@ -19,10 +19,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if ($result->num_rows == 1) {
             $user = $result->fetch_assoc();
-            if (password_verify($password, $user['password'])) {
+            $current_time = date('Y-m-d H:i:s');
+            if ($user['blocked_until'] && $user['blocked_until'] > $current_time) {
+                $blocked_until = date('d.m.Y H:i', strtotime($user['blocked_until']));
+                $error = "Ваш акаунт заблоковано до $blocked_until";
+            } elseif (password_verify($password, $user['password'])) {
                 // Встановлення сесійних змінних
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
+                $_SESSION['role'] = $user['role'];
                 header("Location: index.php");
                 exit;
             } else {

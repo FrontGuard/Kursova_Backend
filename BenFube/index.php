@@ -2,6 +2,15 @@
 session_start();
 include 'config.php';
 
+// Перевірка, чи користувач увійшов в систему
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
+$user_role = $_SESSION['role']; // Отримуємо роль користувача
+
 // Отримання всіх тегів
 $result = $conn->query("SELECT * FROM tags");
 $tags = $result->fetch_all(MYSQLI_ASSOC);
@@ -9,20 +18,30 @@ $tags = $result->fetch_all(MYSQLI_ASSOC);
 // Фільтрація відео за тегами
 $selected_tag_id = isset($_GET['tag_id']) ? $_GET['tag_id'] : null;
 if ($selected_tag_id) {
-    $stmt = $conn->prepare("SELECT videos.* FROM videos 
+    // Отримати відео з обраним тегом
+    $stmt_with_tag = $conn->prepare("SELECT DISTINCT videos.* FROM videos 
                             JOIN video_tags ON videos.id = video_tags.video_id 
-                            WHERE video_tags.tag_id = ? 
-                            UNION 
-                            SELECT videos.* FROM videos 
-                            WHERE videos.id NOT IN (SELECT video_id FROM video_tags WHERE tag_id = ?) 
-                            ORDER BY videos.id DESC");
-    $stmt->bind_param("ii", $selected_tag_id, $selected_tag_id);
+                            WHERE video_tags.tag_id = ?");
+    $stmt_with_tag->bind_param("i", $selected_tag_id);
+    $stmt_with_tag->execute();
+    $videos_with_tag = $stmt_with_tag->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_with_tag->close();
+
+    // Отримати відео без обраного тегу
+    $stmt_without_tag = $conn->prepare("SELECT * FROM videos WHERE id NOT IN 
+                            (SELECT video_id FROM video_tags WHERE tag_id = ?)");
+    $stmt_without_tag->bind_param("i", $selected_tag_id);
+    $stmt_without_tag->execute();
+    $videos_without_tag = $stmt_without_tag->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_without_tag->close();
+
+    // Об'єднати результати
+    $videos = array_merge($videos_with_tag, $videos_without_tag);
 } else {
-    $stmt = $conn->prepare("SELECT * FROM videos ORDER BY id DESC");
+    // Якщо тег не обрано, відображаємо всі відео
+    $result = $conn->query("SELECT * FROM videos ORDER BY id DESC");
+    $videos = $result->fetch_all(MYSQLI_ASSOC);
 }
-$stmt->execute();
-$videos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
 ?>
 
 <!DOCTYPE html>
@@ -39,13 +58,16 @@ $stmt->close();
     <div class="header">
         <h1>Відео Платформа</h1>
         <div class="user-actions">
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <a href="account.php" class="button">Акаунт</a>
-                <a href="logout.php" class="button">Вихід</a>
-            <?php else: ?>
-                <a href="login.php" class="button">Увійти</a>
-                <a href="register.php" class="button">Зареєструватися</a>
+            <h1>Вітаємо, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
+            <p>Це головна сторінка вашого акаунту.</p>
+
+            <?php if ($user_role === 'admin'): ?>
+                <a href="manage_users.php" class="button">Управління користувачами</a>
             <?php endif; ?>
+
+            <a href="manage_videos.php" class="button">Управління відео</a>
+            <a href="logout.php" class="button">Вийти</a>
+            <a href="history.php" class="button">Історія переглядів</a>
             <a href="upload.php" class="button">Завантажити відео</a>
         </div>
     </div>
@@ -66,16 +88,31 @@ $stmt->close();
                 <div class="video-card">
                     <h3><a href="video_view_comments.php?id=<?php echo $video['id']; ?>"><?php echo htmlspecialchars($video['title']); ?></a></h3>
                     <p><?php echo nl2br(htmlspecialchars($video['description'])); ?></p>
+
+                    <!-- Додавання прев'ю -->
                     <a href="video_view_comments.php?id=<?php echo $video['id']; ?>">
-                        <video width="320" height="240" controls>
-                            <source src="<?php echo htmlspecialchars($video['video_path']); ?>" type="video/mp4">
-                            Ваш браузер не підтримує відтворення відео.
-                        </video>
+                        <img src="<?php echo $video['preview_image_path']; ?>" alt="Preview" class="video-preview" width="320" height="280">
                     </a>
-                    <div class="video-actions">
-                        <button class="like-button" data-video-id="<?php echo $video['id']; ?>">Лайк</button>
-                        <span class="like-count"><?php echo $video['likes']; ?></span>
-                    </div>
+
+                    <?php
+                    // Отримання тегів для відео
+                    $stmt = $conn->prepare("SELECT tags.name FROM tags 
+                                            JOIN video_tags ON tags.id = video_tags.tag_id 
+                                            WHERE video_tags.video_id = ?");
+                    $stmt->bind_param("i", $video['id']);
+                    $stmt->execute();
+                    $video_tags_result = $stmt->get_result();
+                    $stmt->close();
+
+                    // Виведення тегів
+                    if ($video_tags_result->num_rows > 0) {
+                        echo "<div class='video-tags'><strong>Теги:</strong>";
+                        while ($tag_row = $video_tags_result->fetch_assoc()) {
+                            echo "<span class='tag'>" . htmlspecialchars($tag_row['name']) . "</span>";
+                        }
+                        echo "</div>";
+                    }
+                    ?>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
@@ -83,43 +120,5 @@ $stmt->close();
         <?php endif; ?>
     </div>
 </div>
-
-<script>
-    $(document).ready(function() {
-        $('.like-button').on('click', function() {
-            var button = $(this);
-            var videoId = button.data('video-id');
-
-            $.ajax({
-                url: 'like_comment.php',
-                type: 'POST',
-                data: { video_id: videoId },
-                success: function(response) {
-                    var likeCountSpan = button.siblings('.like-count');
-                    var newLikeCount = parseInt(likeCountSpan.text()) + 1;
-                    likeCountSpan.text(newLikeCount);
-                    button.prop('disabled', true);
-                }
-            });
-        });
-
-        $('form.comment-form').on('submit', function(event) {
-            event.preventDefault();
-            var form = $(this);
-            var videoId = form.find('input[name="video_id"]').val();
-            var comment = form.find('textarea[name="comment"]').val();
-
-            $.ajax({
-                url: 'like_comment.php',
-                type: 'POST',
-                data: { video_id: videoId, comment: comment },
-                success: function(response) {
-                    form.find('textarea[name="comment"]').val('');
-                    form.after('<p><strong>' + response.username + ':</strong> ' + response.comment + '</p>');
-                }
-            });
-        });
-    });
-</script>
 </body>
 </html>

@@ -24,9 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $video_path = 'uploads/' . basename($_FILES['video']['name']);
             move_uploaded_file($_FILES['video']['tmp_name'], $video_path);
 
+            // Додавання прев'ю до відео
+            $preview_path = 'previews/' . basename($_FILES['preview']['name']);
+            move_uploaded_file($_FILES['preview']['tmp_name'], $preview_path);
+
             // Збереження відео в базу даних
-            $stmt = $conn->prepare("INSERT INTO videos (title, description, video_path, user_id) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("sssi", $title, $description, $video_path, $user_id);
+            $stmt = $conn->prepare("INSERT INTO videos (title, description, video_path, preview_image_path, user_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssi", $title, $description, $video_path, $preview_path, $user_id);
             $stmt->execute();
             $video_id = $stmt->insert_id;
             $stmt->close();
@@ -90,10 +94,15 @@ $tags = $result->fetch_all(MYSQLI_ASSOC);
             <label for="video">Відео:</label>
             <input type="file" id="video" name="video" accept="video/*" required>
         </div>
+        <div>
+            <label for="preview">Прев'ю:</label>
+            <input type="file" id="preview" name="preview" accept="image/*" required>
+        </div>
         <button type="submit">Завантажити</button>
     </form>
     <div id="selectedTagsCount">Вибрано тегів: 0</div>
 </div>
+
 <script>
     const selectedTagsCount = document.getElementById('selectedTagsCount');
     const checkboxes = document.querySelectorAll('input[name="tags[]"]');
@@ -111,4 +120,3 @@ $tags = $result->fetch_all(MYSQLI_ASSOC);
 </script>
 </body>
 </html>
-

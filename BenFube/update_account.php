@@ -54,42 +54,43 @@ $stmt->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Акаунт</title>
+    <title>Оновлення акаунту</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="container">
-    <h1>Ласкаво просимо, <?php echo htmlspecialchars($user['username']); ?></h1>
-    <p>Email: <?php echo htmlspecialchars($user['email']); ?></p>
+    <h1>Ласкаво просимо, <?php echo htmlspecialchars($user['username'] ?? ''); ?></h1>
+    <p>Email: <?php echo htmlspecialchars($user['email'] ?? ''); ?></p>
 
-    <!-- Форма для редагування даних користувача -->
-    <h2>Редагувати акаунт</h2>
-    <form action="update_account.php" method="post">
+    <h2>Редагування акаунту</h2>
+    <form action="update_account_process.php" method="POST">
         <label for="username">Ім'я користувача:</label><br>
-        <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($user['username']); ?>"><br>
+        <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($user['username'] ?? ''); ?>"><br>
+
         <label for="email">Email:</label><br>
-        <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>"><br>
+        <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email'] ?? ''); ?>"><br>
+
         <input type="submit" value="Зберегти зміни">
     </form>
 
     <h2>Статистика</h2>
-    <p>Кількість завантажених відео: <?php echo $video_count; ?></p>
-    <p>Загальна кількість переглядів: <?php echo $view_count; ?></p>
-    <p>Загальна кількість лайків: <?php echo $like_count; ?></p>
+    <p>Кількість завантажених відео: <?php echo $video_count ?? ''; ?></p>
+    <p>Загальна кількість переглядів: <?php echo $view_count ?? ''; ?></p>
+    <p>Загальна кількість лайків: <?php echo $like_count ?? ''; ?></p>
 
     <h2>Ваші відео</h2>
     <div class="videos">
         <?php if ($user_videos): ?>
             <?php foreach ($user_videos as $video): ?>
                 <div class="video-card">
-                    <h3><a href="video_view_comments.php?id=<?php echo $video['id']; ?>"><?php echo htmlspecialchars($video['title']); ?></a></h3>
-                    <p><?php echo nl2br(htmlspecialchars($video['description'])); ?></p>
+                    <h3><a href="video_view_comments.php?id=<?php echo $video['id']; ?>"><?php echo htmlspecialchars($video['title'] ?? ''); ?></a></h3>
+                    <p><?php echo nl2br(htmlspecialchars($video['description'] ?? '')); ?></p>
                     <a href="video_view_comments.php?id=<?php echo $video['id']; ?>">
-                        <img src="<?php echo htmlspecialchars($video['preview_image_path'] ?? 'default-preview.jpg'); ?>" alt="Preview" class="video-preview" width="320" height="280">
+                        <img src="<?php echo htmlspecialchars($video['preview_image_path'] ?? 'default-preview.jpg'); ?>" alt="Preview" class="video-preview" width="320" height="240">
                     </a>
-                    <p>Перегляди: <?php echo $video['view_count']; ?></p>
-                    <p>Лайки: <?php echo $video['like_count']; ?></p>
-                    <p>Дата завантаження: <?php echo htmlspecialchars($video['created_at']); ?></p>
+                    <p>Перегляди: <?php echo $video['view_count'] ?? ''; ?></p>
+                    <p>Лайки: <?php echo $video['like_count'] ?? ''; ?></p>
+                    <p>Дата завантаження: <?php echo htmlspecialchars($video['created_at'] ?? ''); ?></p>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
@@ -100,8 +101,6 @@ $stmt->close();
     <a href="upload.php" class="button">Завантажити нове відео</a>
     <a href="history.php" class="button">Переглянути історію переглядів</a>
     <a href="logout.php" class="button">Вийти</a>
-    <a href="manage_videos.php" class="button">Керуванти відео</a>
-
 </div>
 </body>
 </html>
