@@ -1,0 +1,100 @@
+/* Загальні стилі для контейнера */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Стилі для заголовків */
+h1 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    background: linear-gradient(to right, #ff0000, #000000);
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+/* Стилі для відео карток */
+.video-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 20px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    z-index: 1; /* Додано зміну z-index */
+}
+
+.video-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: translateY(-5px);
+    z-index: 2; /* Збільшуємо z-index при наведенні, щоб прев'ю було наверху */
+}
+
+.video-card h3 {
+    color: #000000;
+    margin: 10px 0;
+    font-size: 1.25em;
+}
+
+.video-card h3 a {
+    color: #ff0000;
+    text-decoration: none;
+}
+
+.video-card p {
+    margin-bottom: 10px;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.video-preview img {
+    border-radius: 8px;
+}
+
+/* Кнопки */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #000000;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.button:hover {
+    background-color: #ff0000;
+}
+
+/* Стилі для хедера */
+header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background-color: #62bd62;
+    padding: 10px 0;
+    text-align: center;
+    z-index: 3;
+}
+
+/* Стилі для навігаційного списку */
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: inline-block;
+}
+
+nav ul li {
+    display: inline-block;
+    margin-right: 10px;
+}

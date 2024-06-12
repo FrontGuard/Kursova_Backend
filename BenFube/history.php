@@ -2,7 +2,6 @@
 session_start();
 include 'config.php';
 
-// Перевірка, чи користувач увійшов у систему
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
@@ -10,25 +9,12 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-// Отримання історії переглядів для користувача
-$stmt = $conn->prepare("SELECT videos.*, DATE(video_views.viewed_at) as viewed_date FROM videos 
-                        JOIN video_views ON videos.id = video_views.video_id 
-                        WHERE video_views.user_id = ? 
-                        ORDER BY video_views.viewed_at DESC");
+// Fetch viewing history
+$stmt = $conn->prepare("SELECT videos.*, video_views.viewed_at FROM video_views JOIN videos ON video_views.video_id = videos.id WHERE video_views.user_id = ? ORDER BY video_views.viewed_at DESC");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
-$videos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$viewing_history = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
-
-// Групування відео за датою перегляду
-$grouped_videos = [];
-foreach ($videos as $video) {
-    $date = $video['viewed_date'];
-    if (!isset($grouped_videos[$date])) {
-        $grouped_videos[$date] = [];
-    }
-    $grouped_videos[$date][] = $video;
-}
 ?>
 
 <!DOCTYPE html>
@@ -37,57 +23,47 @@ foreach ($videos as $video) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Історія переглядів</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="CSS/stylechannel.css">
 </head>
+<style>/* Загальні стилі */ body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f9f9f9; } /* Стилі для заголовків */ h1 { margin-top: 60px; font-size: 2.5em; margin-bottom: 20px; background: linear-gradient(to right, #ff0000, #000000); color: transparent; -webkit-background-clip: text; background-clip: text; } h2 { font-size: 1.8em; color: #333; } /* Стилі для відео */ video { width: 100%; height: auto; margin-bottom: 20px; } /* Стилі для відео карток */ .video-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin-bottom: 20px; background-color: white; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; z-index: 1; } .video-card:hover { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); transform: translateY(-5px); z-index: 2; } .video-card h3 { color: #000000; margin: 10px 0; font-size: 1.25em; } .video-card h3 a { color: #ff0000; text-decoration: none; } .video-card p { margin-bottom: 10px; color: #555; font-size: 0.9em; } .video-preview img { border-radius: 8px; width: 100%; height: auto; } /* Кнопки */ .button { display: inline-block; padding: 10px 20px; background-color: #000000; color: white; text-decoration: none; border-radius: 5px; cursor: pointer; margin-right: 10px; transition: background-color 0.3s ease; } .button:hover { background-color: #ff0000; } /* Стилі для хедера */ header { position: fixed; top: 0; width: 100%; background-color: #62bd62; padding: 1px 0; text-align: center; z-index: 3; } /* Стилі для навігаційного списку */ nav ul { list-style-type: none; margin: 0; padding: 0; display: inline-block; } nav ul li { display: inline-block; margin-right: 10px; } /* Ваші стилі */ .header { text-align: center; margin-bottom: 20px; } .header h1 { color: #333; } .user-actions { margin-bottom: 20px; } .user-actions a.button { margin-right: 10px; } .tags { margin-bottom: 20px; } .tags h2 { color: #333; margin-bottom: 10px; } .tag { display: inline-block; padding: 5px 10px; background-color: #ddd; color: #333; text-decoration: none; border-radius: 5px; margin-right: 5px; } .videos { display: flex; flex-wrap: wrap; justify-content: space-between; } .video-card { width: calc(33.33% - 20px); margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; background-color: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; } .video-card:hover { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); transform: translateY(-5px); } .video-card h3 { color: #333; margin: 10px 0; font-size: 1.25em; } .video-card p { color: #666; font-size: 0.9em; } .video-preview { margin-bottom: 10px; } .video-preview img { border-radius: 8px; width: 100%; height: auto; } .video-tags { margin-top: 10px; } .video-tags .tag { background-color: #ddd; color: #333; padding: 3px 8px; border-radius: 3px; margin-right: 5px; margin-bottom: 5px; display: inline-block; } form { max-width: 300px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); } label { display: block; margin-bottom: 5px; } input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; } button { width: 100%; padding: 10px; background-color: #007bff; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; } button:hover { background-color: #0056b3; } p { text-align: left; margin-top: 20px; } a { color: #007bff; text-decoration: none; } a:hover { text-decoration: underline; } .error-message { color: #ff0000; text-align: center; margin-top: 20px; } .comment { margin-bottom: 20px; padding: 10px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); overflow: hidden; } .comment p { margin: 0; } .comment-time { font-size: 0.8em; color: #888; } textarea { width: 294px; height: 100px; resize: none; } .reply { margin-left: 20px; border-left: 2px solid #ccc; padding-left: 10px; overflow: hidden; } .reply p { margin: 0; } .reply-time { font-size: 0.8em; color: #888; } /* Стилі для кнопки Лайк */ #likeBtn { background-color: #ff0000; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; } #likeBtn:hover { background-color: #cc0000; }/* Стилі для форми пошуку */  form.search-form { max-width: 400px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);}  form.search-form label { display: block; margin-bottom: 10px; color: #333;}  form.search-form input[type="text"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;}  form.search-form input[type="submit"] { width: 100%; padding: 10px; background-color: #007bff; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;}  form.search-form input[type="submit"]:hover { background-color: #0056b3;}</style>
+
 <body>
+
+<header>
+    <nav>
+        <ul>
+            <div><h1>BenFube</h1></div>
+            <li><a href="index.php" class="button">Головна</a>
+            <li><a href="account.php" class="button">Профіль</a>
+            <li><a href="upload.php" class="button">Завантажити нове відео</a></li>
+            <li><a href="history.php" class="button">Переглянути історію переглядів</a></li>
+            <li><a href="manage_videos.php" class="button">Керувати відео</a></li>
+            <li><a href="logout.php" class="button">Вийти</a>
+        </ul>
+    </nav>
+</header>
 <div class="container">
-    <div class="header">
-        <h1>Історія переглядів</h1>
-        <div class="user-actions">
-            <a href="index.php" class="button">На головну</a>
-            <a href="logout.php" class="button">Вихід</a>
-        </div>
-    </div>
-
-    <!-- Відображення відео -->
+    <h1>Історія переглядів</h1>
     <div class="videos">
-        <?php if ($grouped_videos): ?>
-            <?php foreach ($grouped_videos as $date => $videos_on_date): ?>
-                <h2><?php echo htmlspecialchars($date); ?></h2>
-                <?php foreach ($videos_on_date as $video): ?>
-                    <div class="video-card">
-                        <h3><a href="video_view_comments.php?id=<?php echo $video['id']; ?>"><?php echo htmlspecialchars($video['title']); ?></a></h3>
-                        <p><?php echo nl2br(htmlspecialchars($video['description'])); ?></p>
-                        <a href="video_view_comments.php?id=<?php echo $video['id']; ?>">
-                            <!-- Відображення прев'ю -->
-                            <img src="<?php echo htmlspecialchars($video['preview_image_path'] ?? 'default-preview.jpg'); ?>" alt="Preview" class="video-preview" Width="320" height="240">
-                        </a>
-                        <?php
-                        // Отримання тегів для відео
-                        $stmt = $conn->prepare("SELECT tags.name FROM tags 
-                                                JOIN video_tags ON tags.id = video_tags.tag_id 
-                                                WHERE video_tags.video_id = ?");
-                        $stmt->bind_param("i", $video['id']);
-                        $stmt->execute();
-                        $video_tags_result = $stmt->get_result();
-                        $stmt->close();
-
-                        // Виведення тегів
-                        if ($video_tags_result->num_rows > 0) {
-                            echo "<div class='video-tags'><strong>Теги:</strong>";
-                            while ($tag_row = $video_tags_result->fetch_assoc()) {
-                                echo "<span class='tag'>" . htmlspecialchars($tag_row['name']) . "</span>";
-                            }
-                            echo "</div>";
-                        }
-                        ?>
-                    </div>
-                <?php endforeach; ?>
+        <?php if ($viewing_history): ?>
+            <?php foreach ($viewing_history as $video): ?>
+                <div class="video-card">
+                    <a href="video_view_comments.php?id=<?php echo $video['id']; ?>">
+                        <img src="<?php echo htmlspecialchars($video['preview_image_path'] ?? 'default-preview.jpg'); ?>" alt="Preview" class="video-preview" width="320" height="280">
+                    </a>
+                    <h3><a href="video_view_comments.php?id=<?php echo $video['id']; ?>"><?php echo htmlspecialchars($video['title']); ?></a></h3>
+                    <p><?php echo nl2br(htmlspecialchars($video['description'])); ?></p>
+                    <p>Дата перегляду: <?php echo htmlspecialchars($video['viewed_at']); ?></p>
+                </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <p>Історія переглядів порожня.</p>
+            <p>У вас немає історії переглядів.</p>
         <?php endif; ?>
     </div>
+
+    <form action="clear_history.php" method="POST">
+        <input type="submit" value="Очистити історію переглядів">
+    </form>
 </div>
 </body>
 </html>
